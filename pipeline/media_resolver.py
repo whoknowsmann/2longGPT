@@ -60,42 +60,24 @@ def _extract_duration(probe_data: dict) -> float:
     return float(duration)
 
 
-def _download_from_url(url: str, download_dir: str) -> Path:
+def _poll_for_download(url: str, download_dir: str) -> Path:
     if not download_dir:
         raise ValueError(
             "EXTERNAL_DOWNLOAD_DIR is not set. Provide a local path instead of a URL."
         )
     path = Path(download_dir).expanduser().resolve()
-    path.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        raise FileNotFoundError(f"Download directory does not exist: {path}")
 
-    existing_files = {p for p in path.iterdir() if p.is_file()}
-    start_time = time.time()
-    output_template = str(path / "%(title)s.%(ext)s")
-    command = [settings.YTDLP_COMMAND, "-o", output_template, url]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"yt-dlp failed: {completed.stderr.strip() or 'unknown error'}"
+    logger.info("Polling %s for media download from %s", path, url)
+    start = time.time()
+    while time.time() - start < settings.MEDIA_POLL_TIMEOUT_SECONDS:
+        candidates = sorted(
+            (p for p in path.iterdir() if p.suffix.lower() in _supported_extensions()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
         )
-
-    return _poll_for_download(path, existing_files, start_time)
-
-
-def _poll_for_download(
-    download_dir: Path, existing_files: set[Path], start_time: float
-) -> Path:
-    logger.info("Polling %s for downloaded media", download_dir)
-    while time.time() - start_time < settings.MEDIA_POLL_TIMEOUT_SECONDS:
-        candidates = [
-            p
-            for p in download_dir.iterdir()
-            if p.is_file()
-            and p.suffix.lower() in _supported_extensions()
-            and p not in existing_files
-            and p.stat().st_mtime >= start_time
-        ]
         if candidates:
-            candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
             logger.info("Using downloaded media: %s", candidates[0])
             return candidates[0]
         time.sleep(settings.MEDIA_POLL_SECONDS)
@@ -117,7 +99,7 @@ class MediaInfo:
 
 def resolve_media(input_value: str) -> MediaInfo:
     if _is_url(input_value):
-        path = _download_from_url(input_value, settings.EXTERNAL_DOWNLOAD_DIR)
+        path = _poll_for_download(input_value, settings.EXTERNAL_DOWNLOAD_DIR)
     else:
         path = Path(input_value).expanduser().resolve()
 

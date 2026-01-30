@@ -6,7 +6,7 @@ Local Telegram bot that turns already-downloaded media files into Obsidian notes
 
 - Accepts a **local media path** or **YouTube URL** (URL expects an external downloader to place the file on disk).
 - Extracts audio (if video), normalizes it, transcribes with faster-whisper, and optionally summarizes via Ollama.
-- Saves outputs directly into a single Obsidian folder, named after the video title (flat list).
+- Saves outputs to a single Obsidian folder, named after the video title.
 
 ## Requirements
 
@@ -41,11 +41,9 @@ ENABLE_SUMMARY = False
 OLLAMA_MODEL = "llama3:8b"
 WHISPER_MODEL = "large-v3"
 WHISPER_COMPUTE_TYPE = "int8"
-OUTPUT_DATE_PREFIX = True
 
 TELEGRAM_BOT_TOKEN = "<your-telegram-bot-token>"
 EXTERNAL_DOWNLOAD_DIR = "/path/to/your/downloader/output"
-YTDLP_COMMAND = "yt-dlp"
 ```
 
 ## Usage
@@ -60,7 +58,7 @@ In Telegram:
 
 - `/transcript /path/to/video.mp4`
 - `/note /path/to/video.mp4`
-- `/note https://youtube.com/watch?v=...` (downloads via `yt-dlp` into `EXTERNAL_DOWNLOAD_DIR`)
+- `/note https://youtube.com/watch?v=...` (requires external downloader that saves into `EXTERNAL_DOWNLOAD_DIR`)
 
 ## Outputs
 
@@ -71,5 +69,4 @@ In Telegram:
 ## Notes
 
 - Summaries only run when `ENABLE_SUMMARY = True`.
-- Outputs are written into a flat Obsidian folder and include a date prefix like `YYYY-MM-DD – Video Title.md`.
-- If a filename already exists, a numeric suffix is appended (for example, `Video Title (1).md`).
+- If a filename already exists, a numeric suffix is appended.

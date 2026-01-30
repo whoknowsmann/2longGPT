@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -47,12 +46,7 @@ async def _handle_command(
             logger.exception("Summarization failed")
             await update.message.reply_text(f"Summarization failed: {exc}")
 
-    outputs = write_outputs(
-        output_dir=Path(settings.OBSIDIAN_YT_PATH).expanduser().resolve(),
-        base_filename=media.title,
-        transcript=transcript,
-        summary_markdown=summary_markdown,
-    )
+    outputs = write_outputs(media.title, transcript, summary_markdown)
     transcript_path = outputs.get("transcript_path")
     note_path = outputs.get("note_path")
 

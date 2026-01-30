@@ -9,7 +9,6 @@ from typing import Iterable, List
 import requests
 
 from config import settings
-from pipeline.transcribe import TranscriptSegment
 
 
 @dataclass(frozen=True)
@@ -55,64 +54,16 @@ def _summarize_chunks(chunks: Iterable[str]) -> List[str]:
     return summaries
 
 
-def _parse_summary_and_takeaways(text: str) -> tuple[str, List[str]]:
-    summary = ""
-    takeaways: List[str] = []
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    current = None
-    for line in lines:
-        if line.upper().startswith("SUMMARY:"):
-            summary = line.split(":", 1)[1].strip()
-            current = "summary"
-            continue
-        if line.upper().startswith("TAKEAWAYS"):
-            current = "takeaways"
-            continue
-        if current == "summary" and not summary:
-            summary = line
-            continue
-        if current == "takeaways" and line.startswith("-"):
-            takeaways.append(line.lstrip("-").strip())
-
-    if not summary:
-        summary = text.strip()
-    if not takeaways:
-        takeaways = [line.lstrip("-").strip() for line in lines if line.startswith("-")]
-    return summary, takeaways
-
-
-def _format_timestamp(seconds: float) -> str:
-    total_seconds = int(seconds)
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    secs = total_seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-
-
-def _format_timestamped_transcript(segments: Iterable[TranscriptSegment]) -> str:
-    lines = []
-    for segment in segments:
-        start = _format_timestamp(segment.start)
-        end = _format_timestamp(segment.end)
-        lines.append(f"[{start} - {end}] {segment.text.strip()}")
-    return "\n".join(lines).strip()
-
-
-def summarize_transcript(
-    title: str,
-    transcript_text: str,
-    segments: Iterable[TranscriptSegment],
-) -> SummaryResult:
+def summarize_transcript(title: str, transcript_text: str) -> SummaryResult:
     chunk_summaries = _summarize_chunks(_chunk_text(transcript_text))
     combined_prompt = textwrap.dedent(
         f"""
-        Combine the following summaries into a single final summary.
-        Respond with the exact format:
-        SUMMARY: <one paragraph summary>
-        TAKEAWAYS:
-        - bullet 1
-        - bullet 2
-        - bullet 3
+        Combine the following summaries into a single final note.
+        Provide:
+        - Title
+        - Summary paragraph
+        - Key Takeaways (bullets)
+        - Timestamped transcript placeholder section
 
         Title: {title}
         Summaries:
@@ -120,30 +71,15 @@ def summarize_transcript(
         """
     ).strip()
     combined = _ollama_generate(combined_prompt)
-    summary_text, takeaways = _parse_summary_and_takeaways(combined)
-    takeaways_markdown = "\n".join(f"- {item}" for item in takeaways) if takeaways else ""
-    transcript_block = _format_timestamped_transcript(segments)
-
     markdown = textwrap.dedent(
         f"""
         # {title}
 
-        ## Summary
-
-        {summary_text}
-
-        ## Key Takeaways
-
-        {takeaways_markdown}
+        {combined}
 
         ## Transcript
 
-        <details>
-        <summary>Show transcript</summary>
-
-        {transcript_block}
-
-        </details>
+        {transcript_text}
         """
     ).strip()
     return SummaryResult(markdown=markdown)

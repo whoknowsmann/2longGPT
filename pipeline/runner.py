@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,9 @@ from pipeline.normalize_audio import normalize_audio
 from pipeline.summarize import summarize_transcript
 from pipeline.transcribe import TranscriptResult, transcribe_audio
 from pipeline.writer import write_outputs
+
+logger = logging.getLogger(__name__)
+
 
 class PipelineResult:
     def __init__(
@@ -39,18 +43,11 @@ def run_transcription(input_value: str) -> tuple[MediaInfo, TranscriptResult]:
 def run_summary(media: MediaInfo, transcript: TranscriptResult) -> Optional[str]:
     if not settings.ENABLE_SUMMARY:
         return None
-    return summarize_transcript(
-        media.title, transcript.text, transcript.segments
-    ).markdown
+    return summarize_transcript(media.title, transcript.text).markdown
 
 
 def run_pipeline(input_value: str, generate_summary: bool) -> PipelineResult:
     media, transcript = run_transcription(input_value)
     summary_markdown = run_summary(media, transcript) if generate_summary else None
-    outputs = write_outputs(
-        output_dir=Path(settings.OBSIDIAN_YT_PATH).expanduser().resolve(),
-        base_filename=media.title,
-        transcript=transcript,
-        summary_markdown=summary_markdown,
-    )
+    outputs = write_outputs(media.title, transcript, summary_markdown)
     return PipelineResult(media, transcript, outputs, summary_markdown)
