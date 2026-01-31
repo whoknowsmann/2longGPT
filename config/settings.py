@@ -2,14 +2,4 @@
 
 from __future__ import annotations
 
-OBSIDIAN_YT_PATH = "/absolute/path/to/Obsidian/YouTube"
-MAX_MEDIA_LENGTH_SECONDS = 7200
-ENABLE_SUMMARY = False
-OLLAMA_MODEL = "llama3:8b"
-WHISPER_MODEL = "large-v3"
-WHISPER_COMPUTE_TYPE = "int8"
-
-TELEGRAM_BOT_TOKEN = ""
-EXTERNAL_DOWNLOAD_DIR = ""
-MEDIA_POLL_SECONDS = 5
-MEDIA_POLL_TIMEOUT_SECONDS = 600
+from opennote.config.settings import *  # noqa: F403
